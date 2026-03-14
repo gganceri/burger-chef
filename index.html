@@ -2,995 +2,1143 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="mobile-web-app-capable" content="yes">
-<title>🍔 Burger Chef Pixel!</title>
+<title>Burger Chef!</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
-body { font-family:'Press Start 2P',monospace; background:#1a1a2e; overflow:hidden; touch-action:manipulation; image-rendering:pixelated; }
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+body{background:#111;overflow:hidden;touch-action:manipulation;font-family:system-ui,sans-serif}
+canvas{display:block;margin:0 auto}
+#ui{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:10}
 
-/* PIXEL HELPERS */
-.pixel-border {
-  border: 4px solid #000;
-  box-shadow: inset -4px -4px 0 rgba(0,0,0,0.25), inset 4px 4px 0 rgba(255,255,255,0.15),
-    0 4px 0 #000;
-}
+/* HUD */
+#hud{position:absolute;top:0;left:0;width:100%;display:flex;justify-content:space-between;padding:8px 12px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.7),transparent);font-weight:800;font-size:15px;z-index:20}
+#hud span{text-shadow:1px 1px 2px #000}
+.h-score{color:#ffd700}.h-combo{color:#7fff7f}.h-timer{color:#ff9090}.h-lives{color:#ff6b6b}
 
-/* ─── MENU ─── */
-.screen { display:none; position:fixed; top:0; left:0; width:100%; height:100%; flex-direction:column; align-items:center; justify-content:center; z-index:100; }
-.screen.active { display:flex; }
+/* Bottom buttons */
+#btns{position:absolute;bottom:0;left:0;width:100%;display:flex;gap:6px;padding:8px 6px 16px;
+  background:linear-gradient(0deg,rgba(20,15,30,0.95) 60%,transparent);pointer-events:auto;z-index:20;
+  justify-content:center;flex-wrap:wrap}
+.btn{flex:0 0 auto;width:68px;height:68px;border-radius:16px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;border:3px solid rgba(255,255,255,0.15);position:relative;
+  font-size:28px;cursor:pointer;transition:transform 0.08s;overflow:hidden;
+  background:rgba(255,255,255,0.08);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.btn:active{transform:scale(0.88)}
+.btn .lbl{font-size:9px;color:#ccc;margin-top:2px;font-weight:700;letter-spacing:0.5px}
+.btn .prog{position:absolute;bottom:0;left:0;height:4px;border-radius:0 0 13px 13px;transition:width 0.15s}
+.btn.cooking{border-color:#f59e0b;animation:pulseB 0.6s infinite}
+.btn.ready{border-color:#4ade80;box-shadow:0 0 14px #4ade8055}
+.btn.burned{border-color:#ef4444;background:rgba(220,50,50,0.2)}
+@keyframes pulseB{0%,100%{box-shadow:0 0 8px #f59e0b33}50%{box-shadow:0 0 18px #f59e0b88}}
+.btn-serve{background:linear-gradient(135deg,#16a34a,#22c55e)!important;border-color:#16a34a!important;
+  width:auto;padding:0 18px;font-size:13px;color:#fff;font-weight:800;letter-spacing:1px}
+.btn-trash{background:rgba(220,50,50,0.3)!important;border-color:#ef4444!important;width:50px;font-size:20px}
 
-#menu-screen {
-  background: #2d1b69;
-  background-image:
-    radial-gradient(circle at 20% 80%, #ff6b3566 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, #f7c94866 0%, transparent 50%);
-}
-.menu-title {
-  font-size: 1.6em; color: #f7c948; text-shadow: 4px 4px 0 #b8860b, -2px -2px 0 #000;
-  margin-bottom: 5px; text-align:center; line-height:1.5;
-}
-.menu-burger { font-size: 4em; animation: menuBounce 1s ease-in-out infinite; margin: 15px 0; }
-@keyframes menuBounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-15px)} }
-
-.pixel-btn {
-  padding: 14px 32px; font-family: 'Press Start 2P',monospace; font-size: 0.85em;
-  border: 4px solid #000; cursor: pointer; margin: 8px;
-  box-shadow: inset -4px -4px 0 rgba(0,0,0,0.3), inset 4px 4px 0 rgba(255,255,255,0.2), 0 4px 0 #000;
-  transition: transform 0.05s;
-  image-rendering: pixelated;
-}
-.pixel-btn:active { transform: translateY(4px); box-shadow: inset -4px -4px 0 rgba(0,0,0,0.3), inset 4px 4px 0 rgba(255,255,255,0.2); }
-.btn-play { background:#e53e3e; color:#fff; }
-.btn-how { background:#3182ce; color:#fff; font-size:0.7em; padding:10px 24px; }
-.btn-back { background:#6b46c1; color:#fff; font-size:0.7em; padding:10px 24px; }
-
-/* ─── HOW TO ─── */
-#how-screen { background:rgba(0,0,0,0.95); padding:20px; }
-#how-screen h2 { color:#f7c948; font-size:1em; margin-bottom:15px; }
-.how-grid { display:grid; grid-template-columns:auto 1fr; gap:8px 12px; max-width:360px; align-items:center; }
-.how-icon { font-size:1.8em; text-align:center; }
-.how-text { color:#ddd; font-size:0.55em; line-height:1.8; }
-
-/* ─── GAME OVER ─── */
-#game-over-screen { background:rgba(0,0,0,0.92); }
-#game-over-screen h1 { font-size:1.2em; color:#f7c948; text-shadow:3px 3px 0 #000; }
-.go-score { font-size:2em; color:#fff; margin:15px 0; }
-.go-stars { font-size:2em; margin:10px 0; }
-.go-msg { color:#aaa; font-size:0.6em; margin-bottom:5px; line-height:1.6; }
-.btn-retry { background:#38a169; color:#fff; }
-
-/* ─── HUD ─── */
-#hud {
-  position:fixed; top:0; left:0; width:100%; display:none;
-  justify-content:space-between; align-items:center; padding:8px 10px;
-  background:#1a1a2e; border-bottom:4px solid #000; z-index:50;
-  font-size:0.6em; color:#fff;
-}
-.hud-score { color:#f7c948; }
-.hud-combo { color:#68d391; }
-.hud-level { color:#63b3ed; }
-.hud-timer { color:#fc8181; }
-.hud-lives { letter-spacing: 2px; }
-
-/* ─── CUSTOMER BAR ─── */
-#customer-bar {
-  position:fixed; top:38px; left:0; width:100%; display:none;
-  overflow-x:auto; white-space:nowrap; padding:8px;
-  background: linear-gradient(180deg, #4a3f6b, #2d2554);
-  border-bottom:4px solid #000; z-index:40;
-  -webkit-overflow-scrolling: touch;
-}
-.customer-card {
-  display:inline-block; vertical-align:top; width:120px; margin-right:8px;
-  background:#3d3270; border:3px solid #000; border-radius:4px; padding:6px;
-  text-align:center; position:relative; transition:all 0.2s;
-  box-shadow: inset -3px -3px 0 rgba(0,0,0,0.3), inset 3px 3px 0 rgba(255,255,255,0.1);
-}
-.customer-card.active { border-color:#f7c948; background:#4a3f8a; }
-.customer-face { font-size:1.5em; }
-.customer-order { margin:4px 0; font-size:0.9em; letter-spacing:1px; }
-.customer-patience { height:6px; background:#1a1a2e; border:2px solid #000; margin-top:4px; }
-.customer-patience-fill { height:100%; background:#68d391; transition: width 0.2s, background 0.2s; }
-.customer-patience-fill.warn { background:#ecc94b; }
-.customer-patience-fill.danger { background:#fc8181; animation: dangerPulse 0.3s infinite; }
-@keyframes dangerPulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
-
-/* ─── KITCHEN ─── */
-#kitchen {
-  position:fixed; top:140px; left:0; width:100%; bottom:160px;
-  display:none; z-index:30;
-  background: linear-gradient(180deg, #5c4a3a 0%, #4a3828 40%, #6b5744 40%, #5c4a3a 100%);
-  overflow:hidden;
-}
-/* Tile pattern */
-#kitchen::before {
-  content:''; position:absolute; top:40%; left:0; width:100%; height:60%;
-  background: repeating-conic-gradient(#6b574433 0% 25%, transparent 0% 50%) 0 0 / 40px 40px;
-}
-/* Counter */
-#kitchen::after {
-  content:''; position:absolute; top:38%; left:0; width:100%; height:8px;
-  background:#8b7355; border-top:3px solid #a0896b; border-bottom:3px solid #5c4a3a;
-}
-
-/* Assembly area */
-#assembly {
-  position:absolute; top:5%; left:50%; transform:translateX(-50%);
-  width:85%; max-width:380px; height:55%;
-  display:flex; align-items:center; justify-content:center;
-}
-#burger-stack {
-  display:flex; flex-direction:column-reverse; align-items:center;
-  min-height:60px; transition: all 0.2s;
-}
-.ingredient-layer {
-  width: 80px; height: 16px; margin: -2px 0; position:relative;
-  animation: dropIn 0.2s ease-out;
-  image-rendering: pixelated;
-}
-@keyframes dropIn { from{transform:translateY(-30px);opacity:0} to{transform:translateY(0);opacity:1} }
-
-/* Pixel ingredient shapes via box-shadow art */
-.ing-bun-bottom { background:#d4883c; border-radius:0 0 8px 8px; width:76px; height:14px; border:3px solid #000; box-shadow: inset -3px -3px 0 #b06c2a, inset 3px 3px 0 #e8a04e; }
-.ing-bun-top { background:#d4883c; border-radius:12px 12px 4px 4px; width:80px; height:20px; border:3px solid #000; box-shadow: inset -3px -3px 0 #b06c2a, inset 3px 3px 0 #e8a04e; position:relative; }
-.ing-bun-top::after { content:''; position:absolute; top:3px; left:15px; width:6px; height:6px; background:#e8c86e; border-radius:50%; box-shadow: 14px 2px 0 #e8c86e, 28px -1px 0 #e8c86e, 7px 6px 0 #e8c86e, 21px 5px 0 #e8c86e; }
-.ing-patty { background:#6b3a2a; width:72px; height:14px; border:3px solid #000; border-radius:4px; box-shadow: inset -3px -3px 0 #4a2518, inset 3px 3px 0 #8b4e3a; }
-.ing-cheese { background:#f6c744; width:76px; height:8px; border:3px solid #000; border-radius:2px; box-shadow: inset -2px -2px 0 #d4a832; transform:rotate(-2deg); }
-.ing-lettuce { background:#68d391; width:78px; height:10px; border:3px solid #000; border-radius:2px; box-shadow: inset -3px -3px 0 #48b070; clip-path: polygon(0 40%,8% 0,16% 50%,24% 10%,32% 45%,40% 5%,48% 50%,56% 0,64% 40%,72% 10%,80% 45%,88% 0,100% 40%,100% 100%,0 100%); }
-.ing-tomato { background:#e53e3e; width:70px; height:10px; border:3px solid #000; border-radius:50%; box-shadow: inset -3px -3px 0 #c53030, inset 3px 3px 0 #fc8181; }
-.ing-onion { background:#e2d4f0; width:68px; height:8px; border:3px solid #000; border-radius:50%; box-shadow: inset -2px -2px 0 #c4b0d9, inset 0 0 0 2px #d4c4e6; }
-.ing-bacon { background:#c0392b; width:74px; height:10px; border:3px solid #000; border-radius:2px; box-shadow: inset -3px -3px 0 #922b21; background: repeating-linear-gradient(90deg, #c0392b 0px, #c0392b 8px, #e8a08c 8px, #e8a08c 12px); }
-.ing-pickle { background:#7cb342; width:50px; height:8px; border:3px solid #000; border-radius:50%; box-shadow: inset -2px -2px 0 #558b2f; }
-.ing-egg { background:#f6e58d; width:60px; height:12px; border:3px solid #000; border-radius:50%; box-shadow: inset -3px -3px 0 #f0d24d; position:relative; }
-.ing-egg::after { content:''; position:absolute; top:2px; left:50%; transform:translateX(-50%); width:20px; height:6px; background:#fff; border-radius:50%; border:2px solid #ddd; }
-
-/* Ready items display */
-#ready-items {
-  position:absolute; bottom:5%; left:5%; right:5%;
-  display:flex; justify-content:center; gap:6px; flex-wrap:wrap;
-}
-.ready-badge {
-  background:#2d3748; border:3px solid #000; border-radius:4px; padding:4px 8px;
-  font-size:1.2em; animation: readyPop 0.3s ease-out;
-  box-shadow: inset -2px -2px 0 rgba(0,0,0,0.3), inset 2px 2px 0 rgba(255,255,255,0.1);
-}
-@keyframes readyPop { from{transform:scale(0)} to{transform:scale(1)} }
-
-/* ─── STATIONS (bottom) ─── */
-#stations {
-  position:fixed; bottom:0; left:0; width:100%; display:none;
-  background: linear-gradient(0deg, #2d2554, #3d3270);
-  border-top:4px solid #000; padding:6px 4px 18px; z-index:50;
-}
-#station-row {
-  display:flex; justify-content:space-around; gap:3px; margin-bottom:6px;
-}
-.station {
-  flex:1; aspect-ratio:1; max-width:72px; border:3px solid #000; border-radius:6px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  position:relative; transition:all 0.1s; cursor:pointer;
-  box-shadow: inset -3px -3px 0 rgba(0,0,0,0.3), inset 3px 3px 0 rgba(255,255,255,0.1), 0 4px 0 #000;
-}
-.station:active { transform:translateY(4px); box-shadow: inset -3px -3px 0 rgba(0,0,0,0.3), inset 3px 3px 0 rgba(255,255,255,0.1); }
-.station-icon { font-size:1.6em; }
-.station-label { font-size:0.35em; color:#ccc; margin-top:2px; }
-.station-prog { position:absolute; bottom:0; left:0; height:5px; border-radius:0 0 3px 3px; transition:width 0.1s; }
-
-.st-grill { background:#7c3a1a; }
-.st-fry { background:#8b6914; }
-.st-ice { background:#2b6cb0; }
-.st-drink { background:#6b46c1; }
-.st-ingredient { background:#2d6b3f; }
-
-.station.cooking { animation:stCook 0.4s infinite; }
-@keyframes stCook { 0%,100%{border-color:#f6c744} 50%{border-color:#f6881f} }
-.station.ready { border-color:#68d391!important; box-shadow: 0 0 12px #68d39188, inset -3px -3px 0 rgba(0,0,0,0.3), inset 3px 3px 0 rgba(255,255,255,0.1), 0 4px 0 #000; }
-.station.burned { border-color:#e53e3e!important; background:#4a1a1a!important; }
-
-/* Serve + trash row */
-#action-row { display:flex; justify-content:center; gap:10px; }
-#serve-btn {
-  padding:8px 28px; font-family:'Press Start 2P',monospace; font-size:0.65em;
-  background:#38a169; color:#fff; border:3px solid #000; cursor:pointer;
-  box-shadow: inset -3px -3px 0 rgba(0,0,0,0.3), inset 3px 3px 0 rgba(255,255,255,0.2), 0 3px 0 #000;
-}
-#serve-btn:active { transform:translateY(3px); box-shadow: inset -3px -3px 0 rgba(0,0,0,0.3); }
-#trash-btn {
-  padding:8px 16px; font-family:'Press Start 2P',monospace; font-size:0.65em;
-  background:#e53e3e; color:#fff; border:3px solid #000; cursor:pointer;
-  box-shadow: inset -3px -3px 0 rgba(0,0,0,0.3), inset 3px 3px 0 rgba(255,255,255,0.2), 0 3px 0 #000;
-}
-#trash-btn:active { transform:translateY(3px); }
-
-/* ─── PARTICLES ─── */
-.particle {
-  position:fixed; pointer-events:none; z-index:200; font-weight:bold;
-  font-family:'Press Start 2P',monospace;
-}
-.float-up { animation: floatUp 1s forwards; }
-@keyframes floatUp { 0%{opacity:1;transform:translateY(0)} 100%{opacity:0;transform:translateY(-60px)} }
-
-.smoke {
-  position:absolute; width:8px; height:8px; background:#aaa; border-radius:50%; opacity:0.7;
-  animation: smokeUp 1s forwards;
-}
-@keyframes smokeUp { 0%{opacity:0.7;transform:translateY(0) scale(1)} 100%{opacity:0;transform:translateY(-30px) scale(2)} }
-
-.sizzle-spark {
-  position:absolute; width:4px; height:4px; background:#f6c744; border-radius:50%;
-  animation: sparkle 0.5s forwards;
-}
-@keyframes sparkle { 0%{opacity:1;transform:translate(0,0)} 100%{opacity:0;transform:translate(var(--sx),var(--sy))} }
-
-/* ─── INGREDIENT PANEL ─── */
-#ingredient-panel {
-  display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
-  background:#2d2554; border:4px solid #000; border-radius:8px; padding:12px;
-  z-index:80; max-width:340px; width:90%;
-  box-shadow: 0 0 0 4000px rgba(0,0,0,0.6), inset -4px -4px 0 rgba(0,0,0,0.3), inset 4px 4px 0 rgba(255,255,255,0.1);
-}
-#ingredient-panel h3 { color:#f7c948; font-size:0.6em; text-align:center; margin-bottom:10px; }
-#ingredient-grid {
-  display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;
-}
-.ing-btn {
-  background:#3d3270; border:3px solid #000; border-radius:4px; padding:10px 4px;
-  text-align:center; cursor:pointer; transition:all 0.1s;
-  box-shadow: inset -2px -2px 0 rgba(0,0,0,0.3), inset 2px 2px 0 rgba(255,255,255,0.1), 0 3px 0 #000;
-}
-.ing-btn:active { transform:translateY(3px); box-shadow:none; }
-.ing-btn .ing-emoji { font-size:1.5em; }
-.ing-btn .ing-name { font-size:0.4em; color:#ccc; margin-top:3px; display:block; }
-#close-panel {
-  margin-top:10px; width:100%; padding:8px; font-family:'Press Start 2P',monospace;
-  font-size:0.55em; background:#e53e3e; color:#fff; border:3px solid #000; cursor:pointer;
-  box-shadow: 0 3px 0 #000;
-}
+/* Screens */
+.scr{display:none;position:fixed;top:0;left:0;width:100%;height:100%;flex-direction:column;
+  align-items:center;justify-content:center;z-index:100;pointer-events:auto}
+.scr.active{display:flex}
+#scr-menu{background:linear-gradient(135deg,#ff6b35,#f7c948,#ff6b35);background-size:400% 400%;
+  animation:gShift 3s ease infinite}
+@keyframes gShift{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+.title{font-size:2.8em;text-shadow:3px 3px 0 rgba(0,0,0,0.2);animation:bounce 1.2s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
+.sub{font-size:1.1em;color:#7c2d12;font-weight:700;margin:4px 0 24px}
+.mbtn{padding:16px 42px;font-size:1.3em;font-weight:800;border:none;border-radius:14px;cursor:pointer;
+  margin:6px;box-shadow:0 5px 0 rgba(0,0,0,0.2);transition:transform 0.08s;text-transform:uppercase;letter-spacing:1px}
+.mbtn:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,0.2)}
+.mb-play{background:#dc2626;color:#fff}.mb-how{background:#fff;color:#7c2d12;font-size:0.9em;padding:12px 28px}
+#scr-go{background:rgba(0,0,0,0.88)}
+#scr-go .title{font-size:2em;color:#ffd700;animation:none}
+#scr-go .bigscore{font-size:3em;color:#fff;margin:10px 0}
+#scr-go .msg{color:#bbb;font-size:1em;margin:6px 0}
+.mb-retry{background:#16a34a;color:#fff}
+#scr-how{background:rgba(0,0,0,0.94);padding:24px}
+#scr-how h2{color:#ffd700;font-size:1.4em;margin-bottom:16px}
+.how-list{color:#ddd;font-size:0.95em;line-height:2.2;text-align:left;max-width:340px}
+.mb-back{background:#6366f1;color:#fff;font-size:0.9em;padding:12px 28px;margin-top:18px}
 </style>
 </head>
 <body>
 
-<!-- ═══ MENU ═══ -->
-<div id="menu-screen" class="screen active">
-  <div class="menu-title">🍔 BURGER<br>CHEF</div>
-  <div class="menu-burger">🍔</div>
-  <button class="pixel-btn btn-play" onclick="startGame()">▶ JUGAR</button>
-  <button class="pixel-btn btn-how" onclick="showScreen('how-screen')">? CÓMO JUGAR</button>
-</div>
-
-<!-- ═══ HOW TO ═══ -->
-<div id="how-screen" class="screen">
-  <h2 style="color:#f7c948;font-size:0.9em;margin-bottom:15px;">CÓMO JUGAR</h2>
-  <div class="how-grid">
-    <div class="how-icon">👆</div><div class="how-text">Tocá un CLIENTE para ver su pedido</div>
-    <div class="how-icon">🔥</div><div class="how-text">PARRILLA cocina la carne</div>
-    <div class="how-icon">🍟</div><div class="how-text">FREIDORA hace las papas</div>
-    <div class="how-icon">🍦</div><div class="how-text">HELADO prepara el postre</div>
-    <div class="how-icon">🥤</div><div class="how-text">BEBIDA sirve gaseosa</div>
-    <div class="how-icon">🧅</div><div class="how-text">INGREDIENTES para armar la burger</div>
-    <div class="how-icon">⏱</div><div class="how-text">¡Sacá a tiempo o se quema!</div>
-    <div class="how-icon">🍽</div><div class="how-text">SERVIR cuando el pedido esté completo</div>
-    <div class="how-icon">🗑</div><div class="how-text">TIRAR descarta lo que armaste</div>
-    <div class="how-icon">⭐</div><div class="how-text">¡Combos = más puntos!</div>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div id="hud" style="display:none">
+    <span class="h-score">⭐ <b id="hs">0</b></span>
+    <span class="h-combo" id="hc"></span>
+    <span class="h-lives" id="hl">♥♥♥</span>
+    <span class="h-timer">⏱ <b id="ht">90</b></span>
   </div>
-  <button class="pixel-btn btn-back" onclick="showScreen('menu-screen')" style="margin-top:20px;">← VOLVER</button>
-</div>
-
-<!-- ═══ GAME OVER ═══ -->
-<div id="game-over-screen" class="screen">
-  <h1 style="font-size:1em;color:#f7c948;text-shadow:3px 3px 0 #000;">TURNO TERMINADO</h1>
-  <div class="go-stars" id="go-stars"></div>
-  <div class="go-score" id="go-score"></div>
-  <div class="go-msg" id="go-msg"></div>
-  <div class="go-msg" id="go-stats"></div>
-  <button class="pixel-btn btn-retry" onclick="startGame()" style="margin-top:15px;">↻ OTRA VEZ</button>
-  <button class="pixel-btn btn-back" onclick="showScreen('menu-screen')" style="margin-top:8px;">⌂ MENÚ</button>
-</div>
-
-<!-- ═══ HUD ═══ -->
-<div id="hud">
-  <span class="hud-score">★<span id="h-score">0</span></span>
-  <span class="hud-combo" id="h-combo"></span>
-  <span class="hud-lives" id="h-lives">♥♥♥</span>
-  <span class="hud-level" id="h-level">LV1</span>
-  <span class="hud-timer">⏱<span id="h-timer">90</span></span>
-</div>
-
-<!-- ═══ CUSTOMERS ═══ -->
-<div id="customer-bar"></div>
-
-<!-- ═══ KITCHEN ═══ -->
-<div id="kitchen">
-  <div id="assembly">
-    <div id="burger-stack"></div>
-  </div>
-  <div id="ready-items"></div>
-</div>
-
-<!-- ═══ STATIONS ═══ -->
-<div id="stations">
-  <div id="station-row">
-    <div class="station st-grill" onclick="cookStation(0)">
-      <span class="station-icon">🔥</span>
-      <span class="station-label">CARNE</span>
-      <div class="station-prog" id="sp-0"></div>
-    </div>
-    <div class="station st-fry" onclick="cookStation(1)">
-      <span class="station-icon">🍟</span>
-      <span class="station-label">PAPAS</span>
-      <div class="station-prog" id="sp-1"></div>
-    </div>
-    <div class="station st-ice" onclick="cookStation(2)">
-      <span class="station-icon">🍦</span>
-      <span class="station-label">HELADO</span>
-      <div class="station-prog" id="sp-2"></div>
-    </div>
-    <div class="station st-drink" onclick="cookStation(3)">
-      <span class="station-icon">🥤</span>
-      <span class="station-label">BEBIDA</span>
-      <div class="station-prog" id="sp-3"></div>
-    </div>
-    <div class="station st-ingredient" onclick="openIngredients()">
-      <span class="station-icon">🧅</span>
-      <span class="station-label">EXTRAS</span>
-      <div class="station-prog" id="sp-4"></div>
-    </div>
-  </div>
-  <div id="action-row">
-    <button id="trash-btn" onclick="trashOrder()">🗑 TIRAR</button>
-    <button id="serve-btn" onclick="serveCustomer()">🍽 SERVIR</button>
+  <div id="btns" style="display:none">
+    <div class="btn" id="b0" onclick="tapStation(0)"><span>🔥</span><span class="lbl">Carne</span><div class="prog" id="p0"></div></div>
+    <div class="btn" id="b1" onclick="tapStation(1)"><span>🍟</span><span class="lbl">Papas</span><div class="prog" id="p1"></div></div>
+    <div class="btn" id="b2" onclick="tapStation(2)"><span>🍦</span><span class="lbl">Helado</span><div class="prog" id="p2"></div></div>
+    <div class="btn" id="b3" onclick="tapStation(3)"><span>🥤</span><span class="lbl">Bebida</span><div class="prog" id="p3"></div></div>
+    <div class="btn btn-trash" onclick="tapTrash()">🗑</div>
+    <div class="btn btn-serve" onclick="tapServe()">🍽 SERVIR</div>
   </div>
 </div>
 
-<!-- ═══ INGREDIENT PANEL ═══ -->
-<div id="ingredient-panel">
-  <h3>ELEGÍ INGREDIENTE</h3>
-  <div id="ingredient-grid"></div>
-  <button id="close-panel" onclick="closeIngredients()">✕ CERRAR</button>
+<!-- Screens -->
+<div class="scr active" id="scr-menu">
+  <div class="title">🍔</div>
+  <div style="font-size:2em;font-weight:900;color:#fff;text-shadow:2px 2px 0 rgba(0,0,0,0.2)">BURGER CHEF</div>
+  <div class="sub">¡Cociná las mejores hamburguesas!</div>
+  <button class="mbtn mb-play" onclick="startGame()">▶ JUGAR</button>
+  <button class="mbtn mb-how" onclick="showScr('scr-how')">❓ Cómo jugar</button>
+</div>
+<div class="scr" id="scr-how">
+  <h2>🎮 Cómo Jugar</h2>
+  <div class="how-list">
+    👆 Tocá un <b>cliente</b> en el mostrador<br>
+    🔥 Tocá <b>Carne</b> → el chef va a la parrilla<br>
+    🍟 Tocá <b>Papas</b> → las fríe<br>
+    🍦🥤 <b>Helado</b> y <b>Bebida</b> también<br>
+    ⏱ Cuando brilla verde → ¡está listo!<br>
+    ⚠️ ¡Si tardás mucho se quema!<br>
+    ✅ Se auto-completa el pedido<br>
+    🍽 Tocá <b>SERVIR</b> cuando esté todo<br>
+    🔥 ¡Combos = puntos x2, x3, x4...!<br>
+    😡 Si el cliente se va, ¡perdés una vida!
+  </div>
+  <button class="mbtn mb-back" onclick="showScr('scr-menu')">← Volver</button>
+</div>
+<div class="scr" id="scr-go">
+  <div class="title" id="go-title">⏰ ¡Se acabó!</div>
+  <div style="font-size:2.2em;margin:8px 0" id="go-stars"></div>
+  <div class="bigscore" id="go-score"></div>
+  <div class="msg" id="go-msg"></div>
+  <div class="msg" id="go-stats"></div>
+  <button class="mbtn mb-retry" onclick="startGame()">🔄 Otra vez</button>
+  <button class="mbtn mb-back" onclick="showScr('scr-menu')" style="margin-top:8px">🏠 Menú</button>
 </div>
 
 <script>
-// ═══════════════════════════════════════════
-// AUDIO ENGINE (Web Audio API — no files!)
-// ═══════════════════════════════════════════
-const AudioCtx = window.AudioContext || window.webkitAudioContext;
-let actx = null;
-function initAudio() { if (!actx) actx = new AudioCtx(); }
+// ═══════════════════════════════════════
+// CANVAS SETUP
+// ═══════════════════════════════════════
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, scale;
 
-function playSound(type) {
-  initAudio();
+function resize() {
+  W = window.innerWidth;
+  H = window.innerHeight;
+  scale = Math.min(W / 400, H / 700);
+  canvas.width = W;
+  canvas.height = H;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ═══════════════════════════════════════
+// AUDIO ENGINE
+// ═══════════════════════════════════════
+let actx;
+function initAudio() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); }
+function snd(type) {
   if (!actx) return;
   try {
     const t = actx.currentTime;
-    switch(type) {
-      case 'sizzle': {
-        const bufSize = actx.sampleRate * 0.3;
-        const buf = actx.createBuffer(1, bufSize, actx.sampleRate);
-        const data = buf.getChannelData(0);
-        for (let i = 0; i < bufSize; i++) data[i] = (Math.random()*2-1) * Math.max(0, 1 - i/bufSize) * 0.15;
-        const src = actx.createBufferSource(); src.buffer = buf;
-        const filt = actx.createBiquadFilter(); filt.type='bandpass'; filt.frequency.value=3000; filt.Q.value=2;
-        src.connect(filt); filt.connect(actx.destination); src.start(t); break;
-      }
-      case 'ding': {
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='sine'; o.frequency.setValueAtTime(880,t); o.frequency.exponentialRampToValueAtTime(1200,t+0.1);
-        g.gain.setValueAtTime(0.3,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
-        o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.3); break;
-      }
-      case 'serve': {
-        [523,659,784].forEach((f,i) => {
-          const o = actx.createOscillator(); const g = actx.createGain();
-          o.type='square'; o.frequency.value=f;
-          g.gain.setValueAtTime(0.15,t+i*0.08); g.gain.exponentialRampToValueAtTime(0.001,t+i*0.08+0.15);
-          o.connect(g); g.connect(actx.destination); o.start(t+i*0.08); o.stop(t+i*0.08+0.2);
-        }); break;
-      }
-      case 'burn': {
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='sawtooth'; o.frequency.setValueAtTime(200,t); o.frequency.exponentialRampToValueAtTime(80,t+0.3);
-        g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.3);
-        o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.3); break;
-      }
-      case 'click': {
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='sine'; o.frequency.value=600;
-        g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.05);
-        o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.06); break;
-      }
-      case 'wrong': {
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='square'; o.frequency.setValueAtTime(150,t); o.frequency.setValueAtTime(100,t+0.1);
-        g.gain.setValueAtTime(0.2,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
-        o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.25); break;
-      }
-      case 'levelup': {
-        [440,554,659,880].forEach((f,i) => {
-          const o = actx.createOscillator(); const g = actx.createGain();
-          o.type='square'; o.frequency.value=f;
-          g.gain.setValueAtTime(0.12,t+i*0.1); g.gain.exponentialRampToValueAtTime(0.001,t+i*0.1+0.2);
-          o.connect(g); g.connect(actx.destination); o.start(t+i*0.1); o.stop(t+i*0.1+0.25);
-        }); break;
-      }
-      case 'angry': {
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='sawtooth'; o.frequency.setValueAtTime(300,t); o.frequency.linearRampToValueAtTime(100,t+0.4);
-        g.gain.setValueAtTime(0.15,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.4);
-        o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.4); break;
-      }
-      case 'drop': {
-        const o = actx.createOscillator(); const g = actx.createGain();
-        o.type='sine'; o.frequency.setValueAtTime(400,t); o.frequency.exponentialRampToValueAtTime(200,t+0.1);
-        g.gain.setValueAtTime(0.12,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.1);
-        o.connect(g); g.connect(actx.destination); o.start(t); o.stop(t+0.12); break;
-      }
+    const g = actx.createGain();
+    g.connect(actx.destination);
+    if (type === 'sizzle') {
+      const b = actx.createBuffer(1, actx.sampleRate * 0.25, actx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length) * 0.12;
+      const s = actx.createBufferSource(); s.buffer = b;
+      const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 3500;
+      s.connect(f); f.connect(g); g.gain.value = 0.3; s.start(t);
+    } else if (type === 'ding') {
+      const o = actx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(988, t); o.frequency.exponentialRampToValueAtTime(1318, t + 0.08);
+      g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      o.connect(g); o.start(t); o.stop(t + 0.25);
+    } else if (type === 'serve') {
+      [523, 659, 784, 1046].forEach((f, i) => {
+        const o = actx.createOscillator(); const gg = actx.createGain();
+        o.type = 'square'; o.frequency.value = f;
+        gg.gain.setValueAtTime(0.1, t + i * 0.07); gg.gain.exponentialRampToValueAtTime(0.001, t + i * 0.07 + 0.15);
+        o.connect(gg); gg.connect(actx.destination); o.start(t + i * 0.07); o.stop(t + i * 0.07 + 0.2);
+      });
+    } else if (type === 'burn') {
+      const o = actx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(60, t + 0.35);
+      g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      o.connect(g); o.start(t); o.stop(t + 0.35);
+    } else if (type === 'angry') {
+      const o = actx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(300, t); o.frequency.linearRampToValueAtTime(80, t + 0.5);
+      g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+      o.connect(g); o.start(t); o.stop(t + 0.5);
+    } else if (type === 'click') {
+      const o = actx.createOscillator(); o.type = 'sine'; o.frequency.value = 700;
+      g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.04);
+      o.connect(g); o.start(t); o.stop(t + 0.05);
+    } else if (type === 'lvl') {
+      [440, 554, 659, 880, 1046].forEach((f, i) => {
+        const o = actx.createOscillator(); const gg = actx.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        gg.gain.setValueAtTime(0.12, t + i * 0.09); gg.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.2);
+        o.connect(gg); gg.connect(actx.destination); o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.25);
+      });
+    } else if (type === 'coin') {
+      const o = actx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(1200, t); o.frequency.exponentialRampToValueAtTime(1800, t + 0.06);
+      g.gain.setValueAtTime(0.12, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+      o.connect(g); o.start(t); o.stop(t + 0.12);
+    } else if (type === 'pop') {
+      const o = actx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(500, t); o.frequency.exponentialRampToValueAtTime(150, t + 0.08);
+      g.gain.setValueAtTime(0.15, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+      o.connect(g); o.start(t); o.stop(t + 0.1);
     }
-  } catch(e){}
+  } catch (e) {}
 }
 
-// ═══════════════════════════════════════════
-// GAME CONFIG
-// ═══════════════════════════════════════════
-const INGREDIENTS = [
-  { id:'bun_bottom', emoji:'🟫', name:'Pan ↓', css:'ing-bun-bottom', cat:'burger' },
-  { id:'patty', emoji:'🥩', name:'Carne', css:'ing-patty', cat:'burger' },
-  { id:'cheese', emoji:'🧀', name:'Queso', css:'ing-cheese', cat:'burger' },
-  { id:'lettuce', emoji:'🥬', name:'Lechuga', css:'ing-lettuce', cat:'burger' },
-  { id:'tomato', emoji:'🍅', name:'Tomate', css:'ing-tomato', cat:'burger' },
-  { id:'onion', emoji:'🧅', name:'Cebolla', css:'ing-onion', cat:'burger' },
-  { id:'bacon', emoji:'🥓', name:'Panceta', css:'ing-bacon', cat:'burger' },
-  { id:'pickle', emoji:'🥒', name:'Pepino', css:'ing-pickle', cat:'burger' },
-  { id:'bun_top', emoji:'🍞', name:'Pan ↑', css:'ing-bun-top', cat:'burger' },
-];
+// ═══════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════
+let particles = [];
+function addParticle(x, y, type, text) {
+  particles.push({ x, y, type, text, life: 1, vx: (Math.random() - 0.5) * 2, vy: -Math.random() * 2 - 1, born: Date.now() });
+}
+function addFireParticle(x, y) {
+  particles.push({ x: x + (Math.random() - 0.5) * 20, y, type: 'fire', life: 1, vx: (Math.random() - 0.5) * 0.5, vy: -Math.random() * 1.5 - 0.5, size: 3 + Math.random() * 4, born: Date.now() });
+}
+function addSteamParticle(x, y) {
+  particles.push({ x: x + (Math.random() - 0.5) * 16, y, type: 'steam', life: 1, vx: (Math.random() - 0.5) * 0.3, vy: -Math.random() * 0.8 - 0.3, size: 4 + Math.random() * 6, born: Date.now() });
+}
+function addBubbleParticle(x, y) {
+  particles.push({ x: x + (Math.random() - 0.5) * 24, y: y + Math.random() * 10, type: 'bubble', life: 1, vx: (Math.random() - 0.5) * 0.3, vy: -Math.random() * 1 - 0.5, size: 2 + Math.random() * 3, born: Date.now() });
+}
+function addSparkle(x, y) {
+  for (let i = 0; i < 6; i++) {
+    const a = Math.random() * Math.PI * 2;
+    particles.push({ x, y, type: 'sparkle', life: 1, vx: Math.cos(a) * (2 + Math.random() * 2), vy: Math.sin(a) * (2 + Math.random() * 2), size: 3, born: Date.now() });
+  }
+}
+function addCoin(x, y, text) {
+  particles.push({ x, y, type: 'text', text, life: 1.5, vx: 0, vy: -1.5, born: Date.now(), color: '#ffd700', size: 16 });
+}
+function addEmoji(x, y, emoji) {
+  particles.push({ x, y, type: 'emoji', text: emoji, life: 1.2, vx: (Math.random() - 0.5) * 2, vy: -2, born: Date.now(), size: 24 });
+}
 
-const STATION_ITEMS = [
-  { id:'cooked_patty', emoji:'🍔', name:'Carne', cookTime:2500, burnTime:5500 },
-  { id:'fries', emoji:'🍟', name:'Papas', cookTime:2000, burnTime:4500 },
-  { id:'icecream', emoji:'🍦', name:'Helado', cookTime:1500, burnTime:4000 },
-  { id:'drink', emoji:'🥤', name:'Bebida', cookTime:1000, burnTime:3500 },
-];
+function updateParticles(dt) {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    const age = (Date.now() - p.born) / 1000;
+    p.x += p.vx; p.y += p.vy;
+    if (p.type === 'fire') p.life = Math.max(0, 1 - age / 0.4);
+    else if (p.type === 'steam') p.life = Math.max(0, 1 - age / 0.8);
+    else if (p.type === 'bubble') p.life = Math.max(0, 1 - age / 0.6);
+    else if (p.type === 'sparkle') p.life = Math.max(0, 1 - age / 0.5);
+    else p.life = Math.max(0, p.life - dt * 1.2);
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+}
 
-const FACES = ['😊','😄','🤩','😎','🤠','😋','🥳','👧','👦','🧒','👨','👩','🧑','👴','👵','🤓','😺'];
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.globalAlpha = p.life;
+    if (p.type === 'fire') {
+      const r = p.size * p.life;
+      const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+      grad.addColorStop(0, '#fff');
+      grad.addColorStop(0.3, '#ffcc00');
+      grad.addColorStop(0.7, '#ff6600');
+      grad.addColorStop(1, 'rgba(255,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(p.x, p.y, r, 0, Math.PI * 2); ctx.fill();
+    } else if (p.type === 'steam') {
+      ctx.fillStyle = `rgba(220,220,220,${p.life * 0.5})`;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * (2 - p.life), 0, Math.PI * 2); ctx.fill();
+    } else if (p.type === 'bubble') {
+      ctx.strokeStyle = `rgba(255,255,200,${p.life * 0.6})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.stroke();
+    } else if (p.type === 'sparkle') {
+      ctx.fillStyle = `rgba(255,255,100,${p.life})`;
+      ctx.fillRect(p.x - 1, p.y - 1, 3, 3);
+    } else if (p.type === 'text') {
+      ctx.fillStyle = p.color || '#ffd700';
+      ctx.font = `bold ${p.size || 16}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.fillText(p.text, p.x, p.y);
+    } else if (p.type === 'emoji') {
+      ctx.font = `${p.size || 24}px system-ui`;
+      ctx.textAlign = 'center';
+      ctx.fillText(p.text, p.x, p.y);
+    }
+    ctx.globalAlpha = 1;
+  });
+}
 
-// Order templates — what customers can ask for
-const ORDER_TEMPLATES = [
-  { items:['burger'], label:'🍔' },
-  { items:['burger','fries'], label:'🍔🍟' },
-  { items:['burger','drink'], label:'🍔🥤' },
-  { items:['burger','fries','drink'], label:'🍔🍟🥤' },
-  { items:['fries','drink'], label:'🍟🥤' },
-  { items:['burger','fries','icecream'], label:'🍔🍟🍦' },
-  { items:['burger','icecream'], label:'🍔🍦' },
-  { items:['fries','icecream'], label:'🍟🍦' },
-  { items:['icecream','drink'], label:'🍦🥤' },
-  { items:['burger','fries','drink','icecream'], label:'🍔🍟🥤🍦' },
-];
+// ═══════════════════════════════════════
+// CHEF CHARACTER
+// ═══════════════════════════════════════
+const chef = {
+  x: 200, y: 300, targetX: 200, targetY: 300,
+  dir: 1, // 1 right, -1 left
+  frame: 0, animTimer: 0,
+  state: 'idle', // idle, walking, cooking, celebrating
+  cookTimer: 0,
+  hat: { angle: 0 }
+};
 
-// Burger recipes per level
-const BURGER_RECIPES = [
-  ['bun_bottom','patty','bun_top'], // simple
-  ['bun_bottom','patty','cheese','bun_top'],
-  ['bun_bottom','patty','cheese','lettuce','bun_top'],
-  ['bun_bottom','patty','cheese','lettuce','tomato','bun_top'],
-  ['bun_bottom','patty','bacon','cheese','lettuce','tomato','bun_top'],
-  ['bun_bottom','patty','bacon','cheese','lettuce','tomato','onion','bun_top'],
-  ['bun_bottom','patty','bacon','patty','cheese','lettuce','tomato','pickle','bun_top'],
+function drawChef() {
+  const cx = chef.x, cy = chef.y;
+  const s = scale * 0.9;
+  const bobY = chef.state === 'walking' ? Math.sin(chef.frame * 0.8) * 3 : 0;
+  const cookBob = chef.state === 'cooking' ? Math.sin(Date.now() / 150) * 2 : 0;
+
+  ctx.save();
+  ctx.translate(cx, cy + bobY);
+  ctx.scale(chef.dir, 1);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.2)';
+  ctx.beginPath();
+  ctx.ellipse(0, 28 * s, 18 * s, 5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Legs
+  const legOff = chef.state === 'walking' ? Math.sin(chef.frame * 0.8) * 5 : 0;
+  ctx.fillStyle = '#2d2d2d';
+  ctx.fillRect(-8 * s, 14 * s + legOff, 6 * s, 14 * s);
+  ctx.fillRect(2 * s, 14 * s - legOff, 6 * s, 14 * s);
+  // Shoes
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(-10 * s, 26 * s + legOff, 9 * s, 4 * s);
+  ctx.fillRect(1 * s, 26 * s - legOff, 9 * s, 4 * s);
+
+  // Body (white chef coat)
+  ctx.fillStyle = '#f5f5f0';
+  ctx.beginPath();
+  ctx.roundRect(-12 * s, -8 * s + cookBob, 24 * s, 24 * s, 4 * s);
+  ctx.fill();
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Buttons
+  ctx.fillStyle = '#ccc';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.arc(0, (-2 + i * 6) * s + cookBob, 1.5 * s, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Arms
+  const armAngle = chef.state === 'cooking' ? Math.sin(Date.now() / 120) * 0.4 : 0;
+  ctx.save();
+  ctx.translate(12 * s, -2 * s + cookBob);
+  ctx.rotate(armAngle);
+  ctx.fillStyle = '#f5f5f0';
+  ctx.fillRect(0, 0, 14 * s, 6 * s);
+  // Hand
+  ctx.fillStyle = '#f4c28d';
+  ctx.beginPath();
+  ctx.arc(14 * s, 3 * s, 4 * s, 0, Math.PI * 2);
+  ctx.fill();
+  // Spatula if cooking
+  if (chef.state === 'cooking') {
+    ctx.fillStyle = '#888';
+    ctx.fillRect(16 * s, -2 * s, 3 * s, 12 * s);
+    ctx.fillStyle = '#aaa';
+    ctx.fillRect(14 * s, 8 * s, 7 * s, 4 * s);
+  }
+  ctx.restore();
+
+  // Left arm
+  ctx.fillStyle = '#f5f5f0';
+  ctx.save();
+  ctx.translate(-12 * s, -2 * s + cookBob);
+  ctx.rotate(-armAngle * 0.5);
+  ctx.fillRect(-14 * s, 0, 14 * s, 6 * s);
+  ctx.fillStyle = '#f4c28d';
+  ctx.beginPath();
+  ctx.arc(-14 * s, 3 * s, 4 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // Neck
+  ctx.fillStyle = '#f4c28d';
+  ctx.fillRect(-4 * s, -13 * s, 8 * s, 6 * s);
+
+  // Head
+  ctx.fillStyle = '#f4c28d';
+  ctx.beginPath();
+  ctx.arc(0, -20 * s, 13 * s, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#e0a870';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // Eyes
+  const blink = Math.sin(Date.now() / 2000) > 0.95;
+  ctx.fillStyle = '#2d1810';
+  if (blink) {
+    ctx.fillRect(-6 * s, -22 * s, 4 * s, 1.5 * s);
+    ctx.fillRect(2 * s, -22 * s, 4 * s, 1.5 * s);
+  } else {
+    ctx.beginPath(); ctx.arc(-4 * s, -22 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(4 * s, -22 * s, 2.5 * s, 0, Math.PI * 2); ctx.fill();
+    // Eye shine
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(-3 * s, -23 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(5 * s, -23 * s, 1 * s, 0, Math.PI * 2); ctx.fill();
+  }
+
+  // Mouth
+  if (chef.state === 'celebrating') {
+    ctx.fillStyle = '#c0392b';
+    ctx.beginPath(); ctx.arc(0, -15 * s, 4 * s, 0, Math.PI); ctx.fill();
+  } else {
+    ctx.strokeStyle = '#c0392b';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, -17 * s, 3 * s, 0.1, Math.PI - 0.1); ctx.stroke();
+  }
+
+  // Blush
+  ctx.fillStyle = 'rgba(255,150,150,0.3)';
+  ctx.beginPath(); ctx.ellipse(-8 * s, -17 * s, 3 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(8 * s, -17 * s, 3 * s, 2 * s, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Chef hat
+  const hatBob = Math.sin(Date.now() / 300) * 1;
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.roundRect(-14 * s, -34 * s + hatBob, 28 * s, 6 * s, 2 * s);
+  ctx.fill();
+  ctx.fillRect(-10 * s, -52 * s + hatBob, 20 * s, 20 * s);
+  ctx.beginPath();
+  ctx.arc(0, -52 * s + hatBob, 10 * s, Math.PI, 0);
+  ctx.fill();
+  ctx.strokeStyle = '#ddd';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.roundRect(-14 * s, -34 * s + hatBob, 28 * s, 6 * s, 2 * s);
+  ctx.stroke();
+
+  // Mustache
+  ctx.fillStyle = '#5c3a1e';
+  ctx.beginPath();
+  ctx.ellipse(-3 * s, -16 * s, 4 * s, 1.5 * s, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(3 * s, -16 * s, 4 * s, 1.5 * s, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function updateChef(dt) {
+  const dx = chef.targetX - chef.x;
+  const dy = chef.targetY - chef.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+
+  if (dist > 3) {
+    const speed = 180 * dt;
+    chef.x += (dx / dist) * Math.min(speed, dist);
+    chef.y += (dy / dist) * Math.min(speed, dist);
+    chef.dir = dx > 0 ? 1 : -1;
+    chef.state = 'walking';
+    chef.frame += dt * 12;
+  } else {
+    if (chef.state === 'walking') chef.state = 'idle';
+  }
+
+  if (chef.state === 'celebrating') {
+    chef.cookTimer -= dt;
+    if (chef.cookTimer <= 0) chef.state = 'idle';
+  }
+}
+
+// ═══════════════════════════════════════
+// KITCHEN DRAWING
+// ═══════════════════════════════════════
+function drawKitchen() {
+  // Floor tiles
+  const tileSize = 32;
+  for (let y = H * 0.55; y < H; y += tileSize) {
+    for (let x = 0; x < W; x += tileSize) {
+      const checker = ((Math.floor(x / tileSize) + Math.floor(y / tileSize)) % 2 === 0);
+      ctx.fillStyle = checker ? '#6b5c4f' : '#7d6e5f';
+      ctx.fillRect(x, y, tileSize, tileSize);
+    }
+  }
+
+  // Back wall
+  const wallGrad = ctx.createLinearGradient(0, 0, 0, H * 0.55);
+  wallGrad.addColorStop(0, '#8fa4a8');
+  wallGrad.addColorStop(1, '#a8bbbf');
+  ctx.fillStyle = wallGrad;
+  ctx.fillRect(0, 0, W, H * 0.55);
+
+  // Wall tiles (subtle)
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 1;
+  for (let y = 0; y < H * 0.55; y += 24) {
+    const off = (Math.floor(y / 24) % 2) * 24;
+    for (let x = -24 + off; x < W + 24; x += 48) {
+      ctx.strokeRect(x, y, 48, 24);
+    }
+  }
+
+  // Counter
+  const counterY = H * 0.25;
+  ctx.fillStyle = '#d4a76a';
+  ctx.fillRect(0, counterY, W, 30);
+  ctx.fillStyle = '#c49356';
+  ctx.fillRect(0, counterY + 26, W, 8);
+  // Counter shine
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.fillRect(0, counterY, W, 4);
+
+  // Shelf on wall
+  ctx.fillStyle = '#8b7355';
+  ctx.fillRect(W * 0.1, H * 0.08, W * 0.25, 6);
+  ctx.fillRect(W * 0.65, H * 0.08, W * 0.25, 6);
+  // Bottles on shelf
+  drawBottle(W * 0.14, H * 0.08, '#e53e3e', '#c0392b'); // ketchup
+  drawBottle(W * 0.21, H * 0.08, '#f6c744', '#d4a832'); // mustard
+  drawBottle(W * 0.28, H * 0.08, '#68d391', '#48b070'); // relish
+  drawBottle(W * 0.69, H * 0.08, '#e53e3e', '#c0392b');
+  drawBottle(W * 0.76, H * 0.08, '#f5f5f0', '#ddd'); // mayo
+  drawBottle(W * 0.83, H * 0.08, '#8b4513', '#6b3410'); // BBQ
+
+  // Stations background (on counter)
+  drawGrillStation(W * 0.08, counterY - 30);
+  drawFryerStation(W * 0.32, counterY - 28);
+  drawIceCreamMachine(W * 0.56, counterY - 40);
+  drawDrinkStation(W * 0.78, counterY - 35);
+
+  // Order window / ticket rail
+  ctx.fillStyle = '#555';
+  ctx.fillRect(0, counterY - 2, W, 4);
+  // Tickets hanging
+  drawOrderTickets(counterY - 2);
+
+  // Menu board on wall
+  const bx = W * 0.38, by = H * 0.02;
+  ctx.fillStyle = '#2d2d2d';
+  ctx.fillRect(bx, by, W * 0.24, H * 0.1);
+  ctx.fillStyle = '#3d3d3d';
+  ctx.fillRect(bx + 2, by + 2, W * 0.24 - 4, H * 0.1 - 4);
+  ctx.fillStyle = '#ffd700';
+  ctx.font = `bold ${10 * scale}px system-ui`;
+  ctx.textAlign = 'center';
+  ctx.fillText('MENÚ', bx + W * 0.12, by + 14 * scale);
+  ctx.fillStyle = '#fff';
+  ctx.font = `${7 * scale}px system-ui`;
+  ctx.fillText('🍔 $5  🍟 $3', bx + W * 0.12, by + 28 * scale);
+  ctx.fillText('🍦 $4  🥤 $2', bx + W * 0.12, by + 40 * scale);
+
+  // Clock on wall
+  drawClock(W * 0.92, H * 0.05, 16);
+}
+
+function drawBottle(x, y, color, dark) {
+  ctx.fillStyle = color;
+  ctx.fillRect(x - 4, y - 18, 8, 18);
+  ctx.fillStyle = dark;
+  ctx.fillRect(x - 2, y - 22, 4, 6);
+  ctx.fillStyle = 'rgba(255,255,255,0.3)';
+  ctx.fillRect(x - 2, y - 16, 2, 10);
+}
+
+function drawGrillStation(x, y) {
+  // Grill body
+  ctx.fillStyle = '#444';
+  ctx.fillRect(x, y, W * 0.2, 30);
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x + 2, y + 2, W * 0.2 - 4, 26);
+  // Grill lines
+  ctx.strokeStyle = '#555';
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath();
+    ctx.moveTo(x + 6, y + 6 + i * 5);
+    ctx.lineTo(x + W * 0.2 - 6, y + 6 + i * 5);
+    ctx.stroke();
+  }
+  // Red hot glow
+  const hotStations = stations.filter(s => s && s.type === 0 && s.state === 'cooking');
+  if (hotStations.length > 0) {
+    ctx.fillStyle = 'rgba(255,80,0,0.15)';
+    ctx.fillRect(x + 2, y + 2, W * 0.2 - 4, 26);
+  }
+}
+
+function drawFryerStation(x, y) {
+  ctx.fillStyle = '#888';
+  ctx.fillRect(x, y, W * 0.18, 28);
+  ctx.fillStyle = '#c8a84e';
+  ctx.fillRect(x + 3, y + 3, W * 0.18 - 6, 22);
+  ctx.fillStyle = 'rgba(255,220,100,0.3)';
+  ctx.fillRect(x + 3, y + 3, W * 0.18 - 6, 8);
+}
+
+function drawIceCreamMachine(x, y) {
+  ctx.fillStyle = '#ddd';
+  ctx.fillRect(x, y, W * 0.14, 40);
+  ctx.fillStyle = '#ccc';
+  ctx.fillRect(x + 2, y + 2, W * 0.14 - 4, 36);
+  // Dispensers
+  ['#f28b82', '#fff', '#a0522d'].forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.fillRect(x + 6 + i * (W * 0.04), y + 30, W * 0.03, 8);
+  });
+}
+
+function drawDrinkStation(x, y) {
+  ctx.fillStyle = '#777';
+  ctx.fillRect(x, y, W * 0.16, 35);
+  ctx.fillStyle = '#666';
+  ctx.fillRect(x + 2, y + 2, W * 0.16 - 4, 31);
+  // Drink nozzles
+  ['#e53e3e', '#2d6cdf', '#38a169'].forEach((c, i) => {
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.arc(x + 12 + i * (W * 0.045), y + 28, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+function drawClock(x, y, r) {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(x, y + r, r, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  const now = new Date();
+  const ha = (now.getHours() % 12 + now.getMinutes() / 60) * Math.PI / 6 - Math.PI / 2;
+  const ma = (now.getMinutes() + now.getSeconds() / 60) * Math.PI / 30 - Math.PI / 2;
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(x, y + r); ctx.lineTo(x + Math.cos(ha) * r * 0.5, y + r + Math.sin(ha) * r * 0.5); ctx.stroke();
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x, y + r); ctx.lineTo(x + Math.cos(ma) * r * 0.7, y + r + Math.sin(ma) * r * 0.7); ctx.stroke();
+}
+
+// ═══════════════════════════════════════
+// CUSTOMERS
+// ═══════════════════════════════════════
+let customers = [], selectedCust = null;
+const FACES = ['😊','😄','🤩','😎','🤠','😋','🥳','👧','👦','🧒','👨','👩','🧑','🤓','😺','👴','👵','🧔'];
+const ORDER_TYPES = [
+  { items: ['burger'], icons: '🍔' },
+  { items: ['burger', 'fries'], icons: '🍔🍟' },
+  { items: ['burger', 'drink'], icons: '🍔🥤' },
+  { items: ['burger', 'fries', 'drink'], icons: '🍔🍟🥤' },
+  { items: ['fries', 'drink'], icons: '🍟🥤' },
+  { items: ['burger', 'fries', 'icecream'], icons: '🍔🍟🍦' },
+  { items: ['fries', 'icecream'], icons: '🍟🍦' },
+  { items: ['burger', 'fries', 'drink', 'icecream'], icons: '🍔🍟🥤🍦' },
+  { items: ['icecream', 'drink'], icons: '🍦🥤' },
+  { items: ['burger', 'icecream'], icons: '🍔🍦' },
 ];
 
 const LEVELS = [
-  { time:100, maxCust:2, patience:22000, spawn:5000, orderPool:[0,1,2,4] },
-  { time:95, maxCust:3, patience:20000, spawn:4500, orderPool:[0,1,2,3,4] },
-  { time:90, maxCust:3, patience:18000, spawn:4000, orderPool:[1,2,3,5,6] },
-  { time:85, maxCust:4, patience:16000, spawn:3500, orderPool:[2,3,5,6,7,8] },
-  { time:80, maxCust:4, patience:14000, spawn:3000, orderPool:[3,5,6,7,8,9] },
-  { time:75, maxCust:5, patience:12000, spawn:2500, orderPool:[3,5,6,8,9] },
-  { time:70, maxCust:5, patience:10000, spawn:2200, orderPool:[5,6,9] },
+  { time:100, maxC:2, patience:24000, spawn:5500, orders:[0,1,2,4] },
+  { time:95,  maxC:3, patience:21000, spawn:4800, orders:[0,1,2,3,4] },
+  { time:90,  maxC:3, patience:18000, spawn:4200, orders:[1,2,3,5,6] },
+  { time:85,  maxC:4, patience:16000, spawn:3600, orders:[2,3,5,6,7,8] },
+  { time:80,  maxC:4, patience:14000, spawn:3000, orders:[3,5,6,7,8,9] },
+  { time:75,  maxC:5, patience:12000, spawn:2600, orders:[3,5,7,8,9] },
+  { time:70,  maxC:5, patience:10000, spawn:2200, orders:[5,7,8,9] },
 ];
 
-// ═══════════════════════════════════════════
-// GAME STATE
-// ═══════════════════════════════════════════
-let score=0, combo=0, bestCombo=0, level=0, timeLeft=0, lives=3, totalServed=0;
-let customers=[], selectedCustId=null;
-let stations=[null,null,null,null]; // cooking stations state
-let burgerStack=[]; // current ingredient layers
-let readyItems={}; // { fries:1, icecream:0, drink:2, cooked_patty:1 }
-let gameRunning=false;
-let loopId=null, spawnId=null, timerId=null;
+function spawnCustomer() {
+  if (!gameRunning) return;
+  const lv = LEVELS[Math.min(level, LEVELS.length - 1)];
+  if (customers.length >= lv.maxC) return;
 
-// ═══════════════════════════════════════════
-// SCREEN MANAGEMENT
-// ═══════════════════════════════════════════
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  if (id==='menu-screen'||id==='how-screen'||id==='game-over-screen') hideGameUI();
-}
-function hideGameUI() {
-  ['hud','customer-bar','kitchen','stations'].forEach(id=>document.getElementById(id).style.display='none');
-  document.getElementById('ingredient-panel').style.display='none';
-  gameRunning=false; clearInterval(loopId); clearInterval(spawnId); clearInterval(timerId);
-}
-function showGameUI() {
-  document.getElementById('hud').style.display='flex';
-  document.getElementById('customer-bar').style.display='block';
-  document.getElementById('kitchen').style.display='block';
-  document.getElementById('stations').style.display='block';
+  const pool = lv.orders;
+  const tmpl = ORDER_TYPES[pool[Math.floor(Math.random() * pool.length)]];
+  const slotX = 30 + customers.length * (W / (lv.maxC + 1));
+
+  const c = {
+    id: Date.now() + Math.random(),
+    face: FACES[Math.floor(Math.random() * FACES.length)],
+    order: tmpl.items.slice(),
+    icons: tmpl.icons,
+    fulfilled: {},
+    patience: lv.patience,
+    maxPatience: lv.patience,
+    x: slotX, baseY: H * 0.15,
+    enterAnim: 1, // 1 = entering
+    mood: 'happy', // happy, meh, angry
+  };
+  c.order.forEach(it => c.fulfilled[it] = false);
+  customers.push(c);
+  if (!selectedCust) selectedCust = c.id;
 }
 
-// ═══════════════════════════════════════════
-// START GAME
-// ═══════════════════════════════════════════
+function drawCustomers() {
+  const counterY = H * 0.25;
+  customers.forEach((c, idx) => {
+    const slotW = W / (customers.length + 1);
+    const targetX = slotW * (idx + 1);
+    c.x += (targetX - c.x) * 0.08;
+
+    const cx = c.x, cy = c.baseY;
+    const selected = c.id === selectedCust;
+
+    // Selection glow
+    if (selected) {
+      ctx.fillStyle = 'rgba(255,215,0,0.15)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + 10, 30, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Customer body (simple)
+    const bob = Math.sin(Date.now() / 400 + idx) * 2;
+
+    // Body
+    ctx.fillStyle = `hsl(${(c.id * 137) % 360}, 60%, 55%)`;
+    ctx.beginPath();
+    ctx.roundRect(cx - 14, cy - 5 + bob, 28, 22, 6);
+    ctx.fill();
+
+    // Face
+    ctx.font = `${26}px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // Change face based on patience
+    const pct = c.patience / c.maxPatience;
+    let face = c.face;
+    if (pct < 0.25) face = '😡';
+    else if (pct < 0.5) face = '😤';
+    ctx.fillText(face, cx, cy - 16 + bob);
+
+    // Order bubble
+    const bw = c.icons.length * 18 + 16;
+    const bx = cx - bw / 2, by = cy - 55 + bob;
+    // Bubble
+    ctx.fillStyle = selected ? '#fff' : 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.roundRect(bx, by, bw, 26, 8);
+    ctx.fill();
+    ctx.strokeStyle = selected ? '#ffd700' : '#ccc';
+    ctx.lineWidth = selected ? 2 : 1;
+    ctx.stroke();
+    // Bubble pointer
+    ctx.fillStyle = selected ? '#fff' : 'rgba(255,255,255,0.9)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 5, by + 26);
+    ctx.lineTo(cx, by + 33);
+    ctx.lineTo(cx + 5, by + 26);
+    ctx.fill();
+
+    // Order icons
+    ctx.font = '16px system-ui';
+    ctx.textAlign = 'center';
+    let ox = bx + 12;
+    c.order.forEach((item, i) => {
+      const em = item === 'burger' ? '🍔' : item === 'fries' ? '🍟' : item === 'icecream' ? '🍦' : '🥤';
+      if (c.fulfilled[item]) {
+        ctx.globalAlpha = 0.4;
+        ctx.fillText('✅', ox + 4, by + 16);
+      } else {
+        ctx.fillText(em, ox + 4, by + 16);
+      }
+      ctx.globalAlpha = 1;
+      ox += 18;
+    });
+
+    // Patience bar
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(cx - 20, cy + 20, 40, 5);
+    const barColor = pct > 0.5 ? '#4ade80' : pct > 0.25 ? '#fbbf24' : '#ef4444';
+    ctx.fillStyle = barColor;
+    ctx.fillRect(cx - 20, cy + 20, 40 * pct, 5);
+  });
+}
+
+function customerHitTest(tx, ty) {
+  for (const c of customers) {
+    if (Math.abs(tx - c.x) < 35 && Math.abs(ty - c.baseY) < 40) return c;
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════
+// ORDER TICKETS
+// ═══════════════════════════════════════
+function drawOrderTickets(railY) {
+  if (!selectedCust) return;
+  const c = customers.find(x => x.id === selectedCust);
+  if (!c) return;
+
+  // Ticket for selected customer
+  const tw = 60, th = 40;
+  const tx = W / 2 - tw / 2, ty = railY + 6;
+  ctx.fillStyle = '#fffde8';
+  ctx.fillRect(tx, ty, tw, th);
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(tx, ty, tw, th);
+  // Pin
+  ctx.fillStyle = '#e53e3e';
+  ctx.beginPath();
+  ctx.arc(tx + tw / 2, railY + 2, 4, 0, Math.PI * 2);
+  ctx.fill();
+  // Order on ticket
+  ctx.font = '14px system-ui';
+  ctx.textAlign = 'center';
+  let ticketIcons = '';
+  c.order.forEach(item => {
+    const em = item === 'burger' ? '🍔' : item === 'fries' ? '🍟' : item === 'icecream' ? '🍦' : '🥤';
+    ticketIcons += (c.fulfilled[item] ? '✅' : em);
+  });
+  ctx.fillText(ticketIcons, tx + tw / 2, ty + 25);
+}
+
+// ═══════════════════════════════════════
+// COOKING STATIONS (game logic)
+// ═══════════════════════════════════════
+const STATION_DEFS = [
+  { id: 'burger', cookTime: 2800, burnTime: 6000, emoji: '🍔', chefX: 0.15, chefY: 0.45 },
+  { id: 'fries', cookTime: 2200, burnTime: 5000, emoji: '🍟', chefX: 0.38, chefY: 0.45 },
+  { id: 'icecream', cookTime: 1400, burnTime: 4000, emoji: '🍦', chefX: 0.6, chefY: 0.45 },
+  { id: 'drink', cookTime: 900, burnTime: 3500, emoji: '🥤', chefX: 0.82, chefY: 0.45 },
+];
+
+let stations_state = [null, null, null, null];
+
+function tapStation(idx) {
+  if (!gameRunning) return;
+  initAudio();
+  const s = stations_state[idx];
+  const el = document.getElementById('b' + idx);
+  const prog = document.getElementById('p' + idx);
+
+  if (s && s.state === 'ready') {
+    // Collect
+    fulfillItem(STATION_DEFS[idx].id);
+    stations_state[idx] = null;
+    el.className = 'btn';
+    prog.style.width = '0';
+    snd('ding');
+    addSparkle(chef.x, chef.y - 30);
+    return;
+  }
+  if (s && s.state === 'burned') {
+    stations_state[idx] = null;
+    el.className = 'btn';
+    prog.style.width = '0';
+    snd('click');
+    return;
+  }
+  if (s) return;
+
+  // Start cooking — move chef
+  const def = STATION_DEFS[idx];
+  chef.targetX = W * def.chefX;
+  chef.targetY = H * def.chefY;
+  stations_state[idx] = { state: 'cooking', start: Date.now(), type: idx };
+  el.classList.add('cooking');
+  snd('sizzle');
+  setTimeout(() => { if (stations_state[idx]?.state === 'cooking') chef.state = 'cooking'; }, 400);
+}
+
+function fulfillItem(type) {
+  if (!selectedCust) return;
+  const c = customers.find(x => x.id === selectedCust);
+  if (!c) return;
+  if (c.order.includes(type) && !c.fulfilled[type]) {
+    c.fulfilled[type] = true;
+    snd('coin');
+    addEmoji(c.x, c.baseY - 40, '✅');
+  }
+}
+
+function updateStations(dt) {
+  const now = Date.now();
+  for (let i = 0; i < 4; i++) {
+    const s = stations_state[i];
+    if (!s) continue;
+    const elapsed = now - s.start;
+    const def = STATION_DEFS[i];
+    const el = document.getElementById('b' + i);
+    const prog = document.getElementById('p' + i);
+
+    if (s.state === 'cooking') {
+      const pct = Math.min(100, elapsed / def.cookTime * 100);
+      prog.style.width = pct + '%';
+      prog.style.background = '#f59e0b';
+      // Station-specific particles
+      if (i === 0 && Math.random() < 0.15) addFireParticle(W * 0.15, H * 0.22);
+      if (i === 1 && Math.random() < 0.12) addBubbleParticle(W * 0.4, H * 0.22);
+      if (i === 2 && Math.random() < 0.06) addSteamParticle(W * 0.62, H * 0.18);
+      if (elapsed >= def.cookTime) {
+        s.state = 'ready';
+        el.className = 'btn ready';
+        prog.style.width = '100%';
+        prog.style.background = '#4ade80';
+        snd('ding');
+        chef.state = 'idle';
+        addSparkle(W * def.chefX, H * 0.2);
+      }
+    }
+    if (s.state === 'ready' && elapsed >= def.burnTime) {
+      s.state = 'burned';
+      el.className = 'btn burned';
+      prog.style.background = '#ef4444';
+      snd('burn');
+      addEmoji(W * def.chefX, H * 0.18, '💨');
+      chef.state = 'idle';
+    }
+    // Smoke if burned
+    if (s.state === 'burned' && Math.random() < 0.05) {
+      addSteamParticle(W * def.chefX, H * 0.2);
+    }
+  }
+}
+
+// ═══════════════════════════════════════
+// SERVE / TRASH
+// ═══════════════════════════════════════
+let score = 0, combo = 0, bestCombo = 0, lives = 3, level = 0, timeLeft = 0, totalServed = 0;
+let gameRunning = false, spawnTimer = 0, lastTime = 0;
+
+function tapServe() {
+  if (!gameRunning || !selectedCust) { snd('click'); return; }
+  const c = customers.find(x => x.id === selectedCust);
+  if (!c) return;
+
+  if (c.order.some(it => !c.fulfilled[it])) {
+    snd('click');
+    // Shake serve button
+    const btn = document.querySelector('.btn-serve');
+    btn.style.animation = 'none'; btn.offsetHeight;
+    btn.style.animation = 'shake 0.3s';
+    return;
+  }
+
+  // SUCCESS
+  snd('serve');
+  const pct = c.patience / c.maxPatience;
+  const base = c.order.length * 100;
+  const speed = Math.floor(pct * 80);
+  combo++;
+  if (combo > bestCombo) bestCombo = combo;
+  const mult = Math.min(combo, 6);
+  const pts = (base + speed) * mult;
+  score += pts;
+  totalServed++;
+
+  addCoin(c.x, c.baseY - 60, '+' + pts);
+  addSparkle(c.x, c.baseY);
+  addEmoji(c.x - 15, c.baseY - 30, '😍');
+  addEmoji(c.x + 15, c.baseY - 30, '⭐');
+  if (combo > 1) addCoin(W / 2, H * 0.12, '🔥 x' + combo);
+
+  chef.state = 'celebrating';
+  chef.cookTimer = 0.8;
+
+  customers = customers.filter(x => x.id !== c.id);
+  selectedCust = customers.length > 0 ? customers[0].id : null;
+  updateHUD();
+  checkLevel();
+}
+
+function tapTrash() {
+  snd('pop');
+}
+
+// ═══════════════════════════════════════
+// CANVAS TAP → SELECT CUSTOMER
+// ═══════════════════════════════════════
+canvas.addEventListener('click', e => {
+  if (!gameRunning) return;
+  const rect = canvas.getBoundingClientRect();
+  const tx = e.clientX - rect.left;
+  const ty = e.clientY - rect.top;
+  const hit = customerHitTest(tx, ty);
+  if (hit) {
+    selectedCust = hit.id;
+    snd('click');
+  }
+});
+
+// ═══════════════════════════════════════
+// GAME FLOW
+// ═══════════════════════════════════════
 function startGame() {
   initAudio();
-  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-
-  score=0; combo=0; bestCombo=0; level=0; lives=3; totalServed=0;
-  customers=[]; selectedCustId=null;
-  stations=[null,null,null,null];
-  burgerStack=[]; readyItems={cooked_patty:0,fries:0,icecream:0,drink:0};
-  gameRunning=true;
+  showScr(null);
+  score = 0; combo = 0; bestCombo = 0; level = 0; lives = 3; totalServed = 0;
+  customers = []; selectedCust = null;
+  stations_state = [null, null, null, null]; particles = [];
+  chef.x = W / 2; chef.y = H * 0.5; chef.targetX = W / 2; chef.targetY = H * 0.5;
+  chef.state = 'idle';
 
   const lv = LEVELS[0];
   timeLeft = lv.time;
+  spawnTimer = 0;
+  gameRunning = true;
 
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('btns').style.display = 'flex';
+  resetStationBtns();
   updateHUD();
-  showGameUI();
-  renderCustomers();
-  renderBurger();
-  renderReady();
-  resetStationsUI();
 
   spawnCustomer();
-  setTimeout(spawnCustomer, 1800);
+  setTimeout(spawnCustomer, 2000);
 
-  clearInterval(loopId); clearInterval(spawnId); clearInterval(timerId);
-  loopId = setInterval(gameUpdate, 50);
-  spawnId = setInterval(()=>{
-    const lv=LEVELS[Math.min(level,LEVELS.length-1)];
-    if(customers.length<lv.maxCust) spawnCustomer();
-  }, LEVELS[0].spawnRate);
-  timerId = setInterval(()=>{
-    if(!gameRunning) return;
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+
+  if (window._timerInt) clearInterval(window._timerInt);
+  window._timerInt = setInterval(() => {
+    if (!gameRunning) return;
     timeLeft--;
-    document.getElementById('h-timer').textContent=timeLeft;
-    if(timeLeft<=0) endGame();
-  },1000);
+    document.getElementById('ht').textContent = timeLeft;
+    if (timeLeft <= 0) endGame();
+  }, 1000);
+
+  if (window._spawnInt) clearInterval(window._spawnInt);
+  window._spawnInt = setInterval(() => {
+    if (!gameRunning) return;
+    const lv = LEVELS[Math.min(level, LEVELS.length - 1)];
+    if (customers.length < lv.maxC) spawnCustomer();
+  }, LEVELS[0].spawnRate);
 }
 
-// ═══════════════════════════════════════════
-// CUSTOMERS
-// ═══════════════════════════════════════════
-function spawnCustomer() {
-  if(!gameRunning) return;
-  const lv=LEVELS[Math.min(level,LEVELS.length-1)];
-  if(customers.length>=lv.maxCust) return;
+function gameLoop(now) {
+  if (!gameRunning) return;
+  const dt = Math.min((now - lastTime) / 1000, 0.05);
+  lastTime = now;
 
-  const pool = lv.orderPool;
-  const tmpl = ORDER_TEMPLATES[pool[Math.floor(Math.random()*pool.length)]];
-  const recipe = tmpl.items.includes('burger')
-    ? BURGER_RECIPES[Math.min(level, BURGER_RECIPES.length-1)]
-    : null;
+  // Update
+  updateChef(dt);
+  updateStations(dt);
+  updateParticles(dt);
+  updateCustomerPatience(dt);
 
-  const c = {
-    id: Date.now()+Math.random(),
-    face: FACES[Math.floor(Math.random()*FACES.length)],
-    order: tmpl.items.slice(),
-    fulfilled: {},
-    recipe: recipe,
-    label: tmpl.label,
-    patience: lv.patience,
-    maxPatience: lv.patience,
-  };
-  tmpl.items.forEach(it=> c.fulfilled[it]=false);
-  customers.push(c);
-  if(!selectedCustId) selectedCustId=c.id;
-  renderCustomers();
+  // Draw
+  ctx.clearRect(0, 0, W, H);
+  drawKitchen();
+  drawCustomers();
+  drawChef();
+  drawParticles();
+
+  requestAnimationFrame(gameLoop);
 }
 
-function renderCustomers() {
-  const bar=document.getElementById('customer-bar');
-  bar.innerHTML='';
-  customers.forEach(c=>{
-    const div=document.createElement('div');
-    div.className='customer-card'+(c.id===selectedCustId?' active':'');
-    const pct=Math.max(0,c.patience/c.maxPatience*100);
-    const cls=pct>50?'':pct>25?' warn':' danger';
-    const orderDisplay = c.order.map(it=>{
-      const em = it==='burger'?'🍔':it==='fries'?'🍟':it==='icecream'?'🍦':'🥤';
-      return c.fulfilled[it]?'✅':em;
-    }).join('');
-    div.innerHTML=`<div class="customer-face">${c.face}</div>
-      <div class="customer-order">${orderDisplay}</div>
-      <div class="customer-patience"><div class="customer-patience-fill${cls}" style="width:${pct}%"></div></div>`;
-    div.onclick=()=>{ selectedCustId=c.id; renderCustomers(); playSound('click'); };
-    bar.appendChild(div);
-  });
-}
-
-// ═══════════════════════════════════════════
-// COOKING STATIONS
-// ═══════════════════════════════════════════
-function cookStation(idx) {
-  if(!gameRunning) return;
-  const s=stations[idx];
-  const el=document.querySelectorAll('.station')[idx];
-  const prog=document.getElementById('sp-'+idx);
-
-  if(s && s.state==='ready') {
-    // Collect
-    const key=STATION_ITEMS[idx].id;
-    readyItems[key]=(readyItems[key]||0)+1;
-    stations[idx]=null;
-    el.className='station '+['st-grill','st-fry','st-ice','st-drink'][idx];
-    prog.style.width='0';
-    playSound('ding');
-    renderReady();
-    checkAutoFulfill();
-    spawnSmoke(el);
-    return;
-  }
-  if(s && s.state==='burned') {
-    stations[idx]=null;
-    el.className='station '+['st-grill','st-fry','st-ice','st-drink'][idx];
-    prog.style.width='0';
-    playSound('click');
-    return;
-  }
-  if(s) return;
-
-  stations[idx]={state:'cooking',start:Date.now()};
-  el.classList.add('cooking');
-  playSound('sizzle');
-}
-
-function resetStationsUI() {
-  for(let i=0;i<4;i++){
-    const el=document.querySelectorAll('.station')[i];
-    el.className='station '+['st-grill','st-fry','st-ice','st-drink'][i];
-    document.getElementById('sp-'+i).style.width='0';
-    document.getElementById('sp-'+i).style.background='';
-  }
-}
-
-// ═══════════════════════════════════════════
-// INGREDIENT PANEL
-// ═══════════════════════════════════════════
-function openIngredients() {
-  if(!gameRunning) return;
-  playSound('click');
-  const grid=document.getElementById('ingredient-grid');
-  grid.innerHTML='';
-  INGREDIENTS.forEach(ing=>{
-    const div=document.createElement('div');
-    div.className='ing-btn';
-    div.innerHTML=`<div class="ing-emoji">${ing.emoji}</div><span class="ing-name">${ing.name}</span>`;
-    div.onclick=()=>addIngredient(ing.id);
-    grid.appendChild(div);
-  });
-  document.getElementById('ingredient-panel').style.display='block';
-}
-function closeIngredients() {
-  document.getElementById('ingredient-panel').style.display='none';
-}
-function addIngredient(id) {
-  // For patty, need cooked_patty
-  if(id==='patty') {
-    if((readyItems.cooked_patty||0)<=0) { playSound('wrong'); return; }
-    readyItems.cooked_patty--;
-    renderReady();
-  }
-  burgerStack.push(id);
-  renderBurger();
-  playSound('drop');
-}
-
-// ═══════════════════════════════════════════
-// BURGER RENDERING
-// ═══════════════════════════════════════════
-function renderBurger() {
-  const stack=document.getElementById('burger-stack');
-  stack.innerHTML='';
-  burgerStack.forEach(id=>{
-    const ing=INGREDIENTS.find(i=>i.id===id);
-    if(!ing) return;
-    const div=document.createElement('div');
-    div.className='ingredient-layer '+ing.css;
-    stack.appendChild(div);
-  });
-}
-
-function renderReady() {
-  const area=document.getElementById('ready-items');
-  area.innerHTML='';
-  Object.entries(readyItems).forEach(([key,count])=>{
-    if(count<=0) return;
-    const item=STATION_ITEMS.find(s=>s.id===key);
-    if(!item) return;
-    for(let i=0;i<count;i++){
-      const span=document.createElement('span');
-      span.className='ready-badge';
-      span.textContent=item.emoji;
-      area.appendChild(span);
-    }
-  });
-}
-
-// ═══════════════════════════════════════════
-// AUTO-FULFILL (check if ready items match order)
-// ═══════════════════════════════════════════
-function checkAutoFulfill() {
-  if(!selectedCustId) return;
-  const c=customers.find(x=>x.id===selectedCustId);
-  if(!c) return;
-
-  c.order.forEach(item=>{
-    if(c.fulfilled[item]) return;
-    if(item==='burger') return; // burger needs manual assembly
-    const key = item==='fries'?'fries':item==='icecream'?'icecream':item==='drink'?'drink':null;
-    if(key && (readyItems[key]||0)>0) {
-      readyItems[key]--;
-      c.fulfilled[item]=true;
-      renderReady();
-    }
-  });
-  renderCustomers();
-}
-
-// ═══════════════════════════════════════════
-// SERVE
-// ═══════════════════════════════════════════
-function serveCustomer() {
-  if(!gameRunning||!selectedCustId) { playSound('wrong'); return; }
-  const c=customers.find(x=>x.id===selectedCustId);
-  if(!c) { playSound('wrong'); return; }
-
-  // Check burger if needed
-  if(c.order.includes('burger') && !c.fulfilled.burger) {
-    // Validate burger stack against recipe
-    if(c.recipe && arraysEqual(burgerStack, c.recipe)) {
-      c.fulfilled.burger=true;
-      burgerStack=[];
-      renderBurger();
-    } else {
-      playSound('wrong');
-      shakeElement(document.getElementById('serve-btn'));
-      return;
-    }
-  }
-
-  // Check all fulfilled
-  if(c.order.some(it=>!c.fulfilled[it])) {
-    playSound('wrong');
-    shakeElement(document.getElementById('serve-btn'));
-    return;
-  }
-
-  // SUCCESS!
-  playSound('serve');
-  const patiencePct=c.patience/c.maxPatience;
-  const base=c.order.length*80;
-  const speed=Math.floor(patiencePct*60);
-  combo++;
-  if(combo>bestCombo) bestCombo=combo;
-  const mult=Math.min(combo,6);
-  const pts=(base+speed)*mult;
-  score+=pts;
-  totalServed++;
-
-  floatText(document.getElementById('serve-btn'), '+'+pts, '#f7c948');
-  if(combo>1) floatText(document.getElementById('h-combo'), '🔥x'+combo, '#68d391');
-
-  // Remove customer
-  const idx=customers.indexOf(c);
-  customers.splice(idx,1);
-  selectedCustId=customers.length>0?customers[0].id:null;
-  burgerStack=[];
-  renderBurger();
-  renderCustomers();
-  updateHUD();
-  checkLevelUp();
-}
-
-function trashOrder() {
-  burgerStack=[];
-  renderBurger();
-  playSound('click');
-}
-
-function arraysEqual(a,b) {
-  if(a.length!==b.length) return false;
-  return a.every((v,i)=>v===b[i]);
-}
-
-// ═══════════════════════════════════════════
-// GAME LOOP
-// ═══════════════════════════════════════════
-function gameUpdate() {
-  if(!gameRunning) return;
-  const now=Date.now();
-
-  // Stations
-  for(let i=0;i<4;i++){
-    const s=stations[i];
-    if(!s) continue;
-    const elapsed=now-s.start;
-    const item=STATION_ITEMS[i];
-    const el=document.querySelectorAll('.station')[i];
-    const prog=document.getElementById('sp-'+i);
-
-    if(s.state==='cooking'){
-      const pct=Math.min(100,elapsed/item.cookTime*100);
-      prog.style.width=pct+'%';
-      prog.style.background='#f6c744';
-      // Sizzle particles
-      if(i===0 && Math.random()<0.08) spawnSizzle(el);
-      if(elapsed>=item.cookTime){
-        s.state='ready';
-        el.classList.remove('cooking');
-        el.classList.add('ready');
-        prog.style.background='#68d391';
-        prog.style.width='100%';
-        playSound('ding');
-      }
-    }
-    if(s.state==='ready' && elapsed>=item.burnTime){
-      s.state='burned';
-      el.classList.remove('ready');
-      el.classList.add('burned');
-      prog.style.background='#e53e3e';
-      playSound('burn');
-      spawnSmoke(el);
-    }
-  }
-
-  // Customer patience
-  let needRender=false;
-  for(let i=customers.length-1;i>=0;i--){
-    const c=customers[i];
-    c.patience-=50;
-    if(c.patience<=0){
-      combo=0;
+function updateCustomerPatience(dt) {
+  for (let i = customers.length - 1; i >= 0; i--) {
+    const c = customers[i];
+    c.patience -= dt * 1000;
+    if (c.patience <= 0) {
+      combo = 0;
       lives--;
-      playSound('angry');
-      floatText(document.getElementById('customer-bar'),'😡 -♥','#fc8181');
-      if(selectedCustId===c.id) { selectedCustId=null; burgerStack=[]; renderBurger(); }
-      customers.splice(i,1);
-      if(!selectedCustId && customers.length>0) selectedCustId=customers[0].id;
-      needRender=true;
+      snd('angry');
+      addEmoji(c.x, c.baseY - 30, '😡');
+      addCoin(c.x, c.baseY - 50, '-♥');
+      if (selectedCust === c.id) selectedCust = null;
+      customers.splice(i, 1);
+      if (!selectedCust && customers.length > 0) selectedCust = customers[0].id;
       updateHUD();
-      if(lives<=0){ endGame(); return; }
+      if (lives <= 0) endGame();
     }
   }
-  if(needRender || now%250<55) renderCustomers();
 }
 
-// ═══════════════════════════════════════════
-// LEVEL UP
-// ═══════════════════════════════════════════
-function checkLevelUp() {
-  const nl=Math.min(LEVELS.length-1, Math.floor(totalServed/4));
-  if(nl>level){
-    level=nl;
-    playSound('levelup');
-    floatText(document.getElementById('h-level'), '⬆ LV'+(level+1), '#63b3ed');
-    clearInterval(spawnId);
-    const lv=LEVELS[level];
-    spawnId=setInterval(()=>{
-      if(customers.length<lv.maxCust) spawnCustomer();
+function checkLevel() {
+  const nl = Math.min(LEVELS.length - 1, Math.floor(totalServed / 4));
+  if (nl > level) {
+    level = nl;
+    snd('lvl');
+    addCoin(W / 2, H * 0.3, '⬆ NIVEL ' + (level + 1));
+    clearInterval(window._spawnInt);
+    const lv = LEVELS[level];
+    window._spawnInt = setInterval(() => {
+      if (!gameRunning) return;
+      if (customers.length < lv.maxC) spawnCustomer();
     }, lv.spawnRate);
     updateHUD();
   }
 }
 
-// ═══════════════════════════════════════════
-// END GAME
-// ═══════════════════════════════════════════
 function endGame() {
-  gameRunning=false;
-  clearInterval(loopId); clearInterval(spawnId); clearInterval(timerId);
-  hideGameUI();
+  gameRunning = false;
+  clearInterval(window._timerInt);
+  clearInterval(window._spawnInt);
+  document.getElementById('hud').style.display = 'none';
+  document.getElementById('btns').style.display = 'none';
 
-  const stars=score>=3000?'⭐⭐⭐':score>=1500?'⭐⭐':score>=500?'⭐':'💪';
-  const msg=score<500?'¡Seguí practicando!':score<1500?'¡Buen trabajo, chef!':score<3000?'¡Sos un crack!':'¡¡MASTER CHEF!!';
-
-  document.getElementById('go-stars').textContent=stars;
-  document.getElementById('go-score').textContent='★ '+score;
-  document.getElementById('go-msg').textContent=msg;
-  document.getElementById('go-stats').innerHTML=
-    '🍔 Servidos: '+totalServed+' | 🔥 Combo: x'+bestCombo+' | LV'+(level+1);
-  showScreen('game-over-screen');
+  const stars = score >= 3000 ? '⭐⭐⭐' : score >= 1500 ? '⭐⭐' : score >= 500 ? '⭐' : '💪';
+  const msg = score < 500 ? '¡Seguí practicando!' : score < 1500 ? '¡Buen trabajo, chef!' : score < 3000 ? '¡Sos un crack!' : '¡¡MASTER CHEF LEGENDARIO!!';
+  document.getElementById('go-stars').textContent = stars;
+  document.getElementById('go-score').textContent = '⭐ ' + score;
+  document.getElementById('go-msg').textContent = msg;
+  document.getElementById('go-stats').textContent = `🍔${totalServed} servidos | 🔥x${bestCombo} combo | LV${level + 1}`;
+  showScr('scr-go');
 }
 
-// ═══════════════════════════════════════════
-// HUD
-// ═══════════════════════════════════════════
 function updateHUD() {
-  document.getElementById('h-score').textContent=score;
-  document.getElementById('h-combo').textContent=combo>1?'🔥x'+combo:'';
-  document.getElementById('h-level').textContent='LV'+(level+1);
-  document.getElementById('h-timer').textContent=timeLeft;
-  let h='';
-  for(let i=0;i<3;i++) h+=i<lives?'♥':'♡';
-  document.getElementById('h-lives').textContent=h;
+  document.getElementById('hs').textContent = score;
+  document.getElementById('hc').textContent = combo > 1 ? '🔥x' + combo : '';
+  let h = '';
+  for (let i = 0; i < 3; i++) h += i < lives ? '♥' : '♡';
+  document.getElementById('hl').textContent = h;
 }
 
-// ═══════════════════════════════════════════
-// PARTICLES & EFFECTS
-// ═══════════════════════════════════════════
-function floatText(el, text, color) {
-  const p=document.createElement('div');
-  p.className='particle float-up';
-  p.textContent=text;
-  p.style.color=color;
-  p.style.fontSize='0.8em';
-  p.style.textShadow='2px 2px 0 #000';
-  const r=el.getBoundingClientRect();
-  p.style.left=(r.left+r.width/2-20)+'px';
-  p.style.top=(r.top-10)+'px';
-  document.body.appendChild(p);
-  setTimeout(()=>p.remove(),1000);
-}
-
-function spawnSmoke(el) {
-  const r=el.getBoundingClientRect();
-  for(let i=0;i<3;i++){
-    const s=document.createElement('div');
-    s.className='smoke';
-    s.style.position='fixed';
-    s.style.left=(r.left+Math.random()*r.width)+'px';
-    s.style.top=(r.top-5)+'px';
-    s.style.zIndex='60';
-    document.body.appendChild(s);
-    setTimeout(()=>s.remove(),1000);
+function resetStationBtns() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('b' + i).className = 'btn';
+    document.getElementById('p' + i).style.width = '0';
   }
 }
 
-function spawnSizzle(el) {
-  const r=el.getBoundingClientRect();
-  const s=document.createElement('div');
-  s.className='sizzle-spark';
-  s.style.position='fixed';
-  s.style.left=(r.left+r.width/2)+'px';
-  s.style.top=(r.top)+'px';
-  s.style.zIndex='60';
-  s.style.setProperty('--sx',(Math.random()*20-10)+'px');
-  s.style.setProperty('--sy',(-10-Math.random()*15)+'px');
-  document.body.appendChild(s);
-  setTimeout(()=>s.remove(),500);
+function showScr(id) {
+  document.querySelectorAll('.scr').forEach(s => s.classList.remove('active'));
+  if (id) document.getElementById(id).classList.add('active');
 }
 
-function shakeElement(el) {
-  el.style.animation='none';
-  el.offsetHeight;
-  el.style.animation='shake 0.3s';
-}
-// Add shake keyframes dynamically
-const shakeStyle=document.createElement('style');
-shakeStyle.textContent='@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}';
-document.head.appendChild(shakeStyle);
+// Add shake keyframes
+const st = document.createElement('style');
+st.textContent = '@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}';
+document.head.appendChild(st);
 
 // Prevent zoom
-document.addEventListener('dblclick',e=>e.preventDefault());
+document.addEventListener('dblclick', e => e.preventDefault());
 
-// ═══════════════════════════════════════════
-// PWA
-// ═══════════════════════════════════════════
-if('serviceWorker' in navigator){
-  const sw=`self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open('bc1').then(c=>c.add(self.location.href.replace(/[^/]*$/,''))))});
-self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
-self.addEventListener('fetch',e=>e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(res=>{if(res.ok){const cl=res.clone();caches.open('bc1').then(c=>c.put(e.request,cl))}return res}).catch(()=>caches.match(e.request)))));`;
-  const blob=new Blob([sw],{type:'application/javascript'});
-  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+// Draw initial kitchen on menu
+function drawMenuBg() {
+  if (gameRunning) return;
+  ctx.clearRect(0, 0, W, H);
+  drawKitchen();
+  chef.x = W / 2; chef.y = H * 0.5;
+  drawChef();
+  requestAnimationFrame(drawMenuBg);
 }
-const manifest={name:"Burger Chef Pixel",short_name:"BurgerChef",start_url:location.href,display:"standalone",orientation:"portrait",background_color:"#1a1a2e",theme_color:"#ff6b35",icons:[{src:"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍔</text></svg>",sizes:"any",type:"image/svg+xml"}]};
-const mBlob=new Blob([JSON.stringify(manifest)],{type:'application/json'});
-const link=document.createElement('link');link.rel='manifest';link.href=URL.createObjectURL(mBlob);
-document.head.appendChild(link);
+drawMenuBg();
+
+// ═══════════════════════════════════════
+// PWA
+// ═══════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  const sw = `self.addEventListener('install',e=>{self.skipWaiting()});
+self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));
+self.addEventListener('fetch',e=>e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))));`;
+  navigator.serviceWorker.register(URL.createObjectURL(new Blob([sw], { type: 'application/javascript' }))).catch(() => {});
+}
+const mf = { name: "Burger Chef", short_name: "BurgerChef", start_url: location.href, display: "standalone", orientation: "portrait", background_color: "#1a1a2e", theme_color: "#ff6b35", icons: [{ src: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍔</text></svg>", sizes: "any", type: "image/svg+xml" }] };
+const ml = document.createElement('link'); ml.rel = 'manifest'; ml.href = URL.createObjectURL(new Blob([JSON.stringify(mf)], { type: 'application/json' }));
+document.head.appendChild(ml);
 </script>
 </body>
 </html>
