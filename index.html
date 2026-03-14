@@ -282,27 +282,28 @@ function moveChef(dt){
 }
 
 // ═══ KITCHEN ═══
-const counterY = () => H * 0.36;
+const counterY = () => H * 0.28;
 function drawKit(){
   const cy = counterY();
   // Floor
-  const ts=30;for(let y=H*.52;y<H;y+=ts)for(let x=0;x<W;x+=ts){c.fillStyle=((Math.floor(x/ts)+Math.floor(y/ts))%2)?'#7d6e5f':'#6b5c4f';c.fillRect(x,y,ts,ts)}
-  // Wall
-  const wg=c.createLinearGradient(0,0,0,H*.52);wg.addColorStop(0,'#8fa4a8');wg.addColorStop(1,'#a8bbbf');c.fillStyle=wg;c.fillRect(0,0,W,H*.52);
-  c.strokeStyle='rgba(255,255,255,0.06)';c.lineWidth=1;for(let y=0;y<H*.52;y+=22){const off=(Math.floor(y/22)%2)*22;for(let x=-22+off;x<W+22;x+=44)c.strokeRect(x,y,44,22)}
-  // Shelves + bottles
-  c.fillStyle='#8b7355';c.fillRect(W*.08,H*.06,W*.22,5);c.fillRect(W*.68,H*.06,W*.22,5);
+  const ts=30;for(let y=H*.35;y<H;y+=ts)for(let x=0;x<W;x+=ts){c.fillStyle=((Math.floor(x/ts)+Math.floor(y/ts))%2)?'#7d6e5f':'#6b5c4f';c.fillRect(x,y,ts,ts)}
+  // Wall (behind counter — customer side)
+  const wg=c.createLinearGradient(0,0,0,H*.35);wg.addColorStop(0,'#8fa4a8');wg.addColorStop(1,'#a8bbbf');c.fillStyle=wg;c.fillRect(0,0,W,H*.35);
+  c.strokeStyle='rgba(255,255,255,0.06)';c.lineWidth=1;for(let y=0;y<H*.35;y+=22){const off=(Math.floor(y/22)%2)*22;for(let x=-22+off;x<W+22;x+=44)c.strokeRect(x,y,44,22)}
+  // Shelves + bottles (on customer-side wall)
+  const wallBot=H*.28;
+  c.fillStyle='#8b7355';c.fillRect(W*.08,wallBot-50,W*.22,5);c.fillRect(W*.68,wallBot-50,W*.22,5);
   [[W*.12,'#e53e3e'],[W*.18,'#f6c744'],[W*.24,'#68d391'],[W*.72,'#e53e3e'],[W*.78,'#f5f5f0'],[W*.84,'#8b4513']].forEach(([bx,cl])=>{
-    c.fillStyle=cl;c.fillRect(bx-3,H*.06-16,6,16);c.fillStyle='rgba(255,255,255,0.3)';c.fillRect(bx-1.5,H*.06-14,2,8)});
+    c.fillStyle=cl;c.fillRect(bx-3,wallBot-50-16,6,16);c.fillStyle='rgba(255,255,255,0.3)';c.fillRect(bx-1.5,wallBot-50-14,2,8)});
   // Menu board
-  c.fillStyle='#2d2d2d';c.fillRect(W*.38,H*.02,W*.24,H*.08);c.fillStyle='#3d3d3d';c.fillRect(W*.38+2,H*.02+2,W*.24-4,H*.08-4);
-  c.fillStyle='#ffd700';c.font='bold 11px system-ui';c.textAlign='center';c.fillText('✦ MENÚ ✦',W*.5,H*.02+14);
-  c.fillStyle='#fff';c.font='9px system-ui';c.fillText('🍔$5 🍟$3 🍦$4 🥤$2',W*.5,H*.02+28);
+  c.fillStyle='#2d2d2d';c.fillRect(W*.38,H*.01,W*.24,H*.06);c.fillStyle='#3d3d3d';c.fillRect(W*.38+2,H*.01+2,W*.24-4,H*.06-4);
+  c.fillStyle='#ffd700';c.font='bold 10px system-ui';c.textAlign='center';c.fillText('✦ MENÚ ✦',W*.5,H*.01+12);
+  c.fillStyle='#fff';c.font='8px system-ui';c.fillText('🍔$5 🍟$3 🍦$4 🥤$2',W*.5,H*.01+24);
   // Counter
   c.fillStyle='#c49356';c.fillRect(0,cy,W,28);c.fillStyle='#d4a76a';c.fillRect(0,cy,W,6);
   c.fillStyle='rgba(255,255,255,0.12)';c.fillRect(0,cy,W,3);c.fillStyle='#a07840';c.fillRect(0,cy+24,W,6);
-  // ═══ STATIONS (McDonald's style) ═══
-  const gy=cy-32, now2=Date.now();
+  // ═══ STATIONS (McDonald's style — behind counter, chef side) ═══
+  const gy=cy+32, now2=Date.now();
 
   // ══ FLAT TOP GRILL ══
   const gx1=W*.04,gw=W*.22;
@@ -405,10 +406,10 @@ const LVS=[
   {time:70,max:5,pat:9000,spn:2000,pool:[5,7,8,9]},
 ];
 const STDEF=[
-  {id:'burger',cook:2800,burn:6000,cx:.16,cy:.48},
-  {id:'fries',cook:2200,burn:5000,cx:.38,cy:.48},
-  {id:'icecream',cook:1400,burn:4200,cx:.59,cy:.48},
-  {id:'drink',cook:900,burn:3500,cx:.81,cy:.48},
+  {id:'burger',cook:2800,burn:6000,cx:.16,cy:.58},
+  {id:'fries',cook:2200,burn:5000,cx:.38,cy:.58},
+  {id:'icecream',cook:1400,burn:4200,cx:.59,cy:.58},
+  {id:'drink',cook:900,burn:3500,cx:.81,cy:.58},
 ];
 
 function drawCustomers(){
@@ -541,7 +542,7 @@ const G = {
     this.score=0;this.combo=0;this.best=0;this.lives=3;this.level=0;this.served=0;
     this.custs=[];this.selId=null;this.st=[null,null,null,null];this.tray=[];pts=[];this.spnAcc=0;
     this.time=LVS[0].time;
-    chef.x=W/2;chef.y=H*.52;chef.tx=W/2;chef.ty=H*.52;chef.state='idle';
+    chef.x=W/2;chef.y=H*.62;chef.tx=W/2;chef.ty=H*.62;chef.state='idle';
     document.getElementById('hud').style.display='flex';
     document.getElementById('btns').style.display='flex';
     this.resetBtns();this.hud();this.running=true;
